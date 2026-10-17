@@ -29,6 +29,20 @@ class PublicTargetAddressPolicyTest {
     }
 
     @Test
+    void rejectsIpv6SpecialPurposeAndDocumentationRanges() {
+        assertThrows(IllegalArgumentException.class,
+                () -> policy.validate(URI.create("http://[2001:0::1]/health")));
+        assertThrows(IllegalArgumentException.class,
+                () -> policy.validate(URI.create("http://[3fff::1]/health")));
+    }
+
+    @Test
+    void rejectsIpv4DocumentationAddresses() {
+        assertThrows(IllegalArgumentException.class,
+                () -> policy.validate(URI.create("http://192.0.2.10/health")));
+    }
+
+    @Test
     void allowsPublicIpv4Addresses() {
         assertDoesNotThrow(
                 () -> policy.validate(URI.create("https://8.8.8.8/health")));

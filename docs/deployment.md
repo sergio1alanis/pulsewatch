@@ -27,7 +27,7 @@ Al arrancar, Flyway aplica las migraciones pendientes (`V1`, `V2`, ...), y Hiber
 
 - El API admite una API key compartida y un límite global de solicitudes por instancia. En producción configura `PULSEWATCH_API_KEY` y `PULSEWATCH_REQUIRE_API_KEY=true`; usa HTTPS. Esto no sustituye cuentas/roles por usuario ni cuotas por cliente.
 - El rate limit vive en memoria y se reinicia con la aplicación; no coordina varias réplicas.
-- La política SSRF actual reduce el riesgo, pero no sustituye controles de egreso de red o una allowlist de destinos.
+- El probe valida todos los resultados DNS y fija las IP aceptadas para esa conexión; conserva el hostname para TLS, bloquea rangos privados/especiales, desactiva proxies y no sigue redirecciones. Añade además controles de egreso en la red del proveedor: la aplicación puede conectar a cualquier IP pública por diseño.
 - Mantén una sola réplica mientras el scheduler no tenga bloqueo distribuido; varias réplicas podrían comprobar un mismo monitor simultáneamente.
 - El webhook es best-effort y no reintenta errores. Para entrega confiable, añade una tabla outbox y reintentos.
 - La instancia que ejecuta el scheduler debe permanecer activa. Si el proveedor suspende o duerme el servicio, se detendrán las comprobaciones automáticas.

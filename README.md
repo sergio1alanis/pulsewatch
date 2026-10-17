@@ -24,7 +24,7 @@ PulseWatch monitoreará la disponibilidad y el tiempo de respuesta de APIs y sit
 
 ## Seguridad de los destinos
 
-Antes de conectar, PulseWatch resuelve el host y rechaza IP privadas, loopback y rangos reservados; tampoco sigue redirecciones HTTP. El scheduler registra esos destinos como `BLOCKED` y espera el intervalo configurado antes de reintentarlos. Esto reduce el riesgo de SSRF, pero no elimina por completo DNS rebinding entre la validación y la conexión. Para producción se debe añadir control de egreso de red o una allowlist de destinos. `pulsewatch.probe.allow-loopback` solo se habilita en pruebas.
+Antes de conectar, PulseWatch valida todas las direcciones DNS y fija esas direcciones para la conexión HTTP, conservando el hostname original para TLS; así evita una segunda resolución distinta entre validación y conexión. También bloquea direcciones privadas, loopback y rangos especiales, desactiva proxies y no sigue redirecciones. El scheduler registra destinos rechazados como `BLOCKED`. Para producción aún se recomienda restringir el egreso de red en el proveedor. `pulsewatch.probe.allow-loopback` solo se habilita en pruebas.
 
 ## Gestión de incidencias
 
@@ -121,5 +121,6 @@ Se preparó un `Dockerfile` multi-stage y una guía en [`docs/deployment.md`](do
 - [x] Preparar Dockerfile multi-stage, configuración del puerto de la plataforma y guía de variables de entorno.
 - [x] Verificar la construcción de la imagen Docker en GitHub Actions, sin publicar una imagen.
 - [x] Añadir API key opcional/obligatoria para producción y límite de solicitudes por instancia.
-- [ ] Endurecer SSRF/egreso de red y añadir coordinación distribuida del scheduler y reintentos de webhook.
+- [x] Fijar las IP validadas por DNS, bloquear rangos IPv4/IPv6 especiales y probar redirecciones y conexiones con DNS pinning.
+- [ ] Configurar restricciones de egreso del proveedor; añadir coordinación distribuida del scheduler y reintentos de webhook.
 - [ ] Desplegar en un proveedor elegido después de confirmar presupuesto y variables de entorno.

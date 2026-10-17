@@ -5,6 +5,7 @@ import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.URI;
 import java.net.UnknownHostException;
+import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -20,6 +21,10 @@ public class PublicTargetAddressPolicy {
     }
 
     public void validate(URI target) {
+        resolvePublicAddresses(target);
+    }
+
+    public List<InetAddress> resolvePublicAddresses(URI target) {
         String host = target.getHost();
         if (host == null || host.isBlank()) {
             throw new IllegalArgumentException("El endpoint debe tener un host válido");
@@ -36,6 +41,7 @@ public class PublicTargetAddressPolicy {
                             "El destino resuelve a una dirección no pública");
                 }
             }
+            return List.of(addresses);
         } catch (UnknownHostException exception) {
             throw new IllegalArgumentException("No se pudo resolver el host del endpoint");
         }
@@ -84,9 +90,17 @@ public class PublicTargetAddressPolicy {
         int fourth = Byte.toUnsignedInt(bytes[3]);
 
         boolean globalUnicastRange = (first & 0xE0) == 0x20;
+        boolean specialPurpose2001Range = first == 0x20 && second == 0x01
+                && (third & 0xFE) == 0;
         boolean documentationRange = first == 0x20 && second == 0x01
                 && third == 0x0D && fourth == 0xB8;
         boolean sixToFourRange = first == 0x20 && second == 0x02;
-        return !globalUnicastRange || documentationRange || sixToFourRange;
+        boolean documentation3fffRange = first == 0x3F && second == 0xFF
+                && (third & 0xF0) == 0;
+        return !globalUnicastRange
+                || specialPurpose2001Range
+                || documentationRange
+                || sixToFourRange
+                || documentation3fffRange;
     }
 }
