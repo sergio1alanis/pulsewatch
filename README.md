@@ -97,7 +97,7 @@ Las pruebas usan H2 en memoria para ejecutarse sin un servidor PostgreSQL local.
 
 ## Despliegue
 
-Se prepararon un `Dockerfile` multi-stage, `render.yaml` para Render Free y una guía de conexión con Neon Free en [`docs/deployment.md`](docs/deployment.md). El proyecto Neon Free en Oregon ya está creado; el servicio de Render aún no se desplegó porque falta introducir las variables de conexión de la base en el formulario seguro de Render. No hay credenciales en el repositorio.
+PulseWatch está desplegado en Render Free con PostgreSQL de Neon Free: [Swagger UI](https://pulsewatch-tjxp.onrender.com/swagger-ui.html) · [Health](https://pulsewatch-tjxp.onrender.com/actuator/health). El API `/api/v1/**` requiere `X-API-Key`; no publiques la clave. El servicio gratuito se suspende por inactividad y el scheduler se detiene mientras duerme. La configuración está en [`render.yaml`](render.yaml) y los detalles en [`docs/deployment.md`](docs/deployment.md).
 
 ## Progreso
 
@@ -123,5 +123,5 @@ Se prepararon un `Dockerfile` multi-stage, `render.yaml` para Render Free y una 
 - [x] Añadir API key, límite de solicitudes y DNS pinning con pruebas anti-SSRF.
 - [x] Preparar Blueprint Render Free y pasos para Neon Free, sin provisionar recursos automáticamente.
 - [x] Crear el proyecto Neon Free en Oregon.
-- [ ] Desplegar el Blueprint Render Free después de introducir las variables DB directamente en Render.
+- [x] Desplegar en Render Free y verificar el health endpoint (`200 OK`, estado `UP`) y el bloqueo del API sin clave (`401`).
 - [ ] Añadir restricciones de egreso del proveedor, coordinación distribuida del scheduler y reintentos de webhook.

@@ -2,7 +2,7 @@
 
 ## Estado
 
-El repositorio incluye un `Dockerfile` multi-stage para construir la aplicación con Java 21 y ejecutarla con una imagen JRE como usuario no root, además de `render.yaml` para un servicio Render Free conectado a Neon Free. El equipo local no necesita Docker. El proyecto Neon Free en Oregon ya está creado; el servicio Render aún no se ha desplegado. Falta introducir las variables de conexión de la base en el formulario seguro de Render.
+El repositorio incluye un `Dockerfile` multi-stage y `render.yaml`. PulseWatch está desplegado en Render Free conectado a Neon Free en Oregon. Se verificó `/actuator/health` con HTTP 200 y estado `UP`; el API responde 401 sin `X-API-Key`. Render Free suspende el servicio tras inactividad, por lo que el scheduler no es continuo. No hay credenciales en el repositorio.
 
 ## Variables de entorno necesarias
 
