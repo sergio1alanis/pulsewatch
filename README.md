@@ -97,7 +97,7 @@ Las pruebas usan H2 en memoria para ejecutarse sin un servidor PostgreSQL local.
 
 ## Despliegue
 
-Se prepararon un `Dockerfile` multi-stage, `render.yaml` para Render Free y una guía de conexión con Neon Free en [`docs/deployment.md`](docs/deployment.md). La configuración está lista; todavía no se crearon recursos ni se desplegó la instancia, porque requiere iniciar sesión y configurar la conexión de Neon en los paneles seguros.
+Se prepararon un `Dockerfile` multi-stage, `render.yaml` para Render Free y una guía de conexión con Neon Free en [`docs/deployment.md`](docs/deployment.md). El proyecto Neon Free en Oregon ya está creado; el servicio de Render aún no se desplegó porque falta introducir las variables de conexión de la base en el formulario seguro de Render. No hay credenciales en el repositorio.
 
 ## Progreso
 
@@ -122,5 +122,6 @@ Se prepararon un `Dockerfile` multi-stage, `render.yaml` para Render Free y una 
 - [x] Verificar la construcción de la imagen Docker en GitHub Actions, sin publicar una imagen.
 - [x] Añadir API key, límite de solicitudes y DNS pinning con pruebas anti-SSRF.
 - [x] Preparar Blueprint Render Free y pasos para Neon Free, sin provisionar recursos automáticamente.
-- [ ] Crear y desplegar Render/Neon después de que el usuario inicie sesión y configure las variables secretas en los paneles.
+- [x] Crear el proyecto Neon Free en Oregon.
+- [ ] Desplegar el Blueprint Render Free después de introducir las variables DB directamente en Render.
 - [ ] Añadir restricciones de egreso del proveedor, coordinación distribuida del scheduler y reintentos de webhook.

@@ -2,7 +2,7 @@
 
 ## Estado
 
-El repositorio incluye un `Dockerfile` multi-stage para construir la aplicación con Java 21 y ejecutarla con una imagen JRE como usuario no root, además de `render.yaml` para un servicio Render Free conectado a Neon Free. El equipo local no necesita Docker. La configuración está lista, pero aún no se han creado los proyectos de Render/Neon ni desplegado la app: hace falta iniciar sesión y completar los datos de conexión directamente en los paneles de los proveedores.
+El repositorio incluye un `Dockerfile` multi-stage para construir la aplicación con Java 21 y ejecutarla con una imagen JRE como usuario no root, además de `render.yaml` para un servicio Render Free conectado a Neon Free. El equipo local no necesita Docker. El proyecto Neon Free en Oregon ya está creado; el servicio Render aún no se ha desplegado. Falta introducir las variables de conexión de la base en el formulario seguro de Render.
 
 ## Variables de entorno necesarias
 
@@ -29,7 +29,7 @@ El archivo [`render.yaml`](../render.yaml) define únicamente un servicio web Do
 
 1. Crea un proyecto **Neon Free** en AWS US West 2 (Oregon) y conserva el plan gratuito. La cuenta Free es permanente, sin tarjeta, con 1 GB de almacenamiento y cuota de cómputo; Neon suspende el cómputo tras inactividad. Revisa los límites actuales en [Neon Pricing](https://neon.com/pricing).
 2. En Render, crea un Blueprint desde `sergio1alanis/pulsewatch`, rama `main`, y revisa que el servicio se mantenga en el plan `free`.
-3. En el formulario inicial de Render, introduce las variables de conexión de Neon. Para `DB_URL`, usa formato JDBC: cambia el prefijo `postgresql://` de Neon por `jdbc:postgresql://` y conserva `sslmode=require` para exigir TLS. No cambies el plan ni habilites servicios adicionales de pago.
+3. En el formulario inicial de Render, introduce las variables de conexión de Neon. En `DB_URL`, usa formato JDBC con el host y nombre de base, sin usuario ni contraseña dentro de la URL; cambia el prefijo `postgresql://` por `jdbc:postgresql://` y conserva `sslmode=require` para exigir TLS. Pon usuario y contraseña únicamente en `DB_USERNAME` y `DB_PASSWORD`. No cambies el plan ni habilites servicios adicionales de pago.
 4. Espera el health check en `/actuator/health`. Swagger está en `/swagger-ui.html`; el API requiere la clave generada por Render.
 
 Es un despliegue de demostración con costo de infraestructura esperado de **US$0** si se mantienen los planes Free y no se habilitan complementos pagos. Render duerme el servicio tras 15 minutos sin tráfico y puede tardar alrededor de un minuto en despertarlo; durante el sueño no corren los checks programados. Neon Free también limita las horas de cómputo y escala a cero; consulta [Render Free](https://render.com/docs/free) y [Render Pricing](https://render.com/pricing). No lo uses como monitor siempre activo ni para disponibilidad garantizada.
