@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: pulsewatch
+    runtime: docker
+    plan: free
+    region: oregon
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: DB_URL
+        sync: false
+      - key: DB_USERNAME
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: PULSEWATCH_API_KEY
+        generateValue: true
+      - key: PULSEWATCH_REQUIRE_API_KEY
+        value: "true"
+      - key: PULSEWATCH_RATE_LIMIT_PER_MINUTE
+        value: "120"
+      - key: PULSEWATCH_SCHEDULER_ENABLED
+        value: "true"

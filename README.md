@@ -97,7 +97,7 @@ Las pruebas usan H2 en memoria para ejecutarse sin un servidor PostgreSQL local.
 
 ## Despliegue
 
-Se preparó un `Dockerfile` multi-stage y una guía en [`docs/deployment.md`](docs/deployment.md). El contenedor puede construirse en la plataforma de alojamiento sin instalar Docker en tu computadora. Aún no se han creado recursos en la nube ni desplegado una instancia.
+Se prepararon un `Dockerfile` multi-stage, `render.yaml` para Render Free y una guía de conexión con Neon Free en [`docs/deployment.md`](docs/deployment.md). La configuración está lista; todavía no se crearon recursos ni se desplegó la instancia, porque requiere iniciar sesión y configurar la conexión de Neon en los paneles seguros.
 
 ## Progreso
 
@@ -118,9 +118,9 @@ Se preparó un `Dockerfile` multi-stage y una guía en [`docs/deployment.md`](do
 - [x] Enviar notificaciones JSON por webhook al abrir/resolver incidencias; opción desactivada si no hay URL configurada.
 - [x] Publicar documentación OpenAPI y Swagger UI para explorar los endpoints.
 - [x] Ejecutar build y pruebas automáticamente con GitHub Actions en `push` y `pull_request` a `main`.
-- [x] Preparar Dockerfile multi-stage, configuración del puerto de la plataforma y guía de variables de entorno.
+- [x] Preparar Dockerfile multi-stage, configuración del puerto y guía de despliegue.
 - [x] Verificar la construcción de la imagen Docker en GitHub Actions, sin publicar una imagen.
-- [x] Añadir API key opcional/obligatoria para producción y límite de solicitudes por instancia.
-- [x] Fijar las IP validadas por DNS, bloquear rangos IPv4/IPv6 especiales y probar redirecciones y conexiones con DNS pinning.
-- [ ] Configurar restricciones de egreso del proveedor; añadir coordinación distribuida del scheduler y reintentos de webhook.
-- [ ] Desplegar en un proveedor elegido después de confirmar presupuesto y variables de entorno.
+- [x] Añadir API key, límite de solicitudes y DNS pinning con pruebas anti-SSRF.
+- [x] Preparar Blueprint Render Free y pasos para Neon Free, sin provisionar recursos automáticamente.
+- [ ] Crear y desplegar Render/Neon después de que el usuario inicie sesión y configure las variables secretas en los paneles.
+- [ ] Añadir restricciones de egreso del proveedor, coordinación distribuida del scheduler y reintentos de webhook.
