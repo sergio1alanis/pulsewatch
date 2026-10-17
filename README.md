@@ -89,6 +89,10 @@ Si el wrapper no puede descargar Maven en Git Bash, configura `TMPDIR` con una r
 
 Las pruebas usan H2 en memoria para ejecutarse sin un servidor PostgreSQL local. H2 es solo una base de pruebas; el entorno de ejecución del proyecto se configurará con PostgreSQL.
 
+## Despliegue
+
+Se preparó un `Dockerfile` multi-stage y una guía en [`docs/deployment.md`](docs/deployment.md). El contenedor puede construirse en la plataforma de alojamiento sin instalar Docker en tu computadora. Aún no se han creado recursos en la nube ni desplegado una instancia.
+
 ## Progreso
 
 - [x] Crear el esqueleto Spring Boot y comprobar el entorno de pruebas.
@@ -108,4 +112,6 @@ Las pruebas usan H2 en memoria para ejecutarse sin un servidor PostgreSQL local.
 - [x] Enviar notificaciones JSON por webhook al abrir/resolver incidencias; opción desactivada si no hay URL configurada.
 - [x] Publicar documentación OpenAPI y Swagger UI para explorar los endpoints.
 - [x] Ejecutar build y pruebas automáticamente con GitHub Actions en `push` y `pull_request` a `main`.
-- [ ] Añadir reintentos/outbox, adaptar el webhook a un proveedor concreto y desplegar el servicio.
+- [x] Preparar Dockerfile multi-stage, configuración del puerto de la plataforma y guía de variables de entorno.
+- [ ] Verificar la construcción de la imagen en CI y desplegar en un proveedor elegido.
+- [ ] Añadir reintentos/outbox y adaptar el webhook a un proveedor concreto.
