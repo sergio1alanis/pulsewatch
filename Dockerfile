@@ -13,6 +13,7 @@ RUN sh ./mvnw --batch-mode --no-transfer-progress -DskipTests package
 FROM eclipse-temurin:21-jre-jammy AS runtime
 
 WORKDIR /app
+ENV PULSEWATCH_REQUIRE_API_KEY=true
 RUN groupadd --system pulsewatch \
     && useradd --system --uid 10001 --gid pulsewatch --no-create-home pulsewatch
 COPY --from=build --chown=10001:10001 /workspace/target/pulsewatch-0.0.1-SNAPSHOT.jar /app/app.jar

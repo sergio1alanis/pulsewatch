@@ -14,13 +14,19 @@ Configura estos valores en el panel seguro del proveedor, no en el repositorio:
 | `DB_USERNAME` | Usuario de aplicación de PostgreSQL |
 | `DB_PASSWORD` | Contraseña del usuario de aplicación |
 | `PORT` | Puerto HTTP indicado por la plataforma; si falta, la aplicación usa `8080` |
+| `PULSEWATCH_API_KEY` | Clave secreta para autenticar el API mediante `X-API-Key` |
+| `PULSEWATCH_REQUIRE_API_KEY` | Ponlo en `true` en producción; si falta la clave, la app no inicia |
+| `PULSEWATCH_RATE_LIMIT_PER_MINUTE` | Límite global por instancia; predeterminado: `120` |
 | `PULSEWATCH_WEBHOOK_URL` | Opcional. Receptor HTTPS para eventos de incidencia |
+
+El `Dockerfile` activa `PULSEWATCH_REQUIRE_API_KEY=true`: el contenedor no arrancará hasta que configures `PULSEWATCH_API_KEY`. Genera una clave aleatoria localmente (por ejemplo, con un gestor de contraseñas) y guárdala solo en el almacén de secretos del proveedor. Los clientes deben enviarla en el encabezado `X-API-Key` sobre HTTPS.
 
 Al arrancar, Flyway aplica las migraciones pendientes (`V1`, `V2`, ...), y Hibernate valida el esquema. Configura un health check en `/actuator/health`.
 
 ## Límites antes de producción real
 
-- El API no tiene autenticación, cuotas ni rate limiting. No expongas el registro de monitores públicamente hasta añadirlos.
+- El API admite una API key compartida y un límite global de solicitudes por instancia. En producción configura `PULSEWATCH_API_KEY` y `PULSEWATCH_REQUIRE_API_KEY=true`; usa HTTPS. Esto no sustituye cuentas/roles por usuario ni cuotas por cliente.
+- El rate limit vive en memoria y se reinicia con la aplicación; no coordina varias réplicas.
 - La política SSRF actual reduce el riesgo, pero no sustituye controles de egreso de red o una allowlist de destinos.
 - Mantén una sola réplica mientras el scheduler no tenga bloqueo distribuido; varias réplicas podrían comprobar un mismo monitor simultáneamente.
 - El webhook es best-effort y no reintenta errores. Para entrega confiable, añade una tabla outbox y reintentos.

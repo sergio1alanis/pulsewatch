@@ -89,6 +89,12 @@ Si el wrapper no puede descargar Maven en Git Bash, configura `TMPDIR` con una r
 
 Las pruebas usan H2 en memoria para ejecutarse sin un servidor PostgreSQL local. H2 es solo una base de pruebas; el entorno de ejecución del proyecto se configurará con PostgreSQL.
 
+## Seguridad del API
+
+- Si se configura `PULSEWATCH_API_KEY`, las rutas `/api/v1/**` requieren ese valor en el encabezado `X-API-Key`; Swagger UI muestra el esquema para autorizar las llamadas.
+- En producción configura también `PULSEWATCH_REQUIRE_API_KEY=true`: la aplicación no arrancará si falta la clave. En desarrollo local, sin clave configurada, el API permanece abierto para facilitar las pruebas.
+- Se aplica un límite global de solicitudes por instancia, configurable con `PULSEWATCH_RATE_LIMIT_PER_MINUTE` (120 por minuto por defecto). No es un limitador distribuido ni una cuota por usuario.
+
 ## Despliegue
 
 Se preparó un `Dockerfile` multi-stage y una guía en [`docs/deployment.md`](docs/deployment.md). El contenedor puede construirse en la plataforma de alojamiento sin instalar Docker en tu computadora. Aún no se han creado recursos en la nube ni desplegado una instancia.
@@ -114,5 +120,6 @@ Se preparó un `Dockerfile` multi-stage y una guía en [`docs/deployment.md`](do
 - [x] Ejecutar build y pruebas automáticamente con GitHub Actions en `push` y `pull_request` a `main`.
 - [x] Preparar Dockerfile multi-stage, configuración del puerto de la plataforma y guía de variables de entorno.
 - [x] Verificar la construcción de la imagen Docker en GitHub Actions, sin publicar una imagen.
+- [x] Añadir API key opcional/obligatoria para producción y límite de solicitudes por instancia.
+- [ ] Endurecer SSRF/egreso de red y añadir coordinación distribuida del scheduler y reintentos de webhook.
 - [ ] Desplegar en un proveedor elegido después de confirmar presupuesto y variables de entorno.
-- [ ] Añadir reintentos/outbox y adaptar el webhook a un proveedor concreto.
