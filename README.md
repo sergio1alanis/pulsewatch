@@ -113,5 +113,6 @@ Se preparó un `Dockerfile` multi-stage y una guía en [`docs/deployment.md`](do
 - [x] Publicar documentación OpenAPI y Swagger UI para explorar los endpoints.
 - [x] Ejecutar build y pruebas automáticamente con GitHub Actions en `push` y `pull_request` a `main`.
 - [x] Preparar Dockerfile multi-stage, configuración del puerto de la plataforma y guía de variables de entorno.
-- [ ] Verificar la construcción de la imagen en CI y desplegar en un proveedor elegido.
+- [x] Verificar la construcción de la imagen Docker en GitHub Actions, sin publicar una imagen.
+- [ ] Desplegar en un proveedor elegido después de confirmar presupuesto y variables de entorno.
 - [ ] Añadir reintentos/outbox y adaptar el webhook a un proveedor concreto.
