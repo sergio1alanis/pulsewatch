@@ -107,6 +107,7 @@ PulseWatch está desplegado en Render Free con PostgreSQL de Neon Free: [Dashboa
 - [x] Listar monitores por nombre con `GET /api/v1/monitors`.
 - [x] Consultar un monitor por ID con `GET /api/v1/monitors/{id}`; devolver 404 si no existe.
 - [x] Pausar/reactivar monitores con `PATCH /api/v1/monitors/{id}` y el campo `enabled`.
+- [x] Eliminar un monitor con `DELETE /api/v1/monitors/{id}`, junto con su historial e incidencias.
 - [x] Editar nombre, endpoint e intervalo con `PUT /api/v1/monitors/{id}`, preservando pausa y estado observado.
 - [x] Añadir migración Flyway `V1__create_monitor_schema.sql` para PostgreSQL.
 - [x] Aplicar Flyway V1 y verificar la lectura de monitores en PostgreSQL local.
@@ -124,5 +125,5 @@ PulseWatch está desplegado en Render Free con PostgreSQL de Neon Free: [Dashboa
 - [x] Preparar Blueprint Render Free y pasos para Neon Free, sin provisionar recursos automáticamente.
 - [x] Crear el proyecto Neon Free en Oregon.
 - [x] Desplegar en Render Free y verificar el health endpoint (`200 OK`, estado `UP`) y el bloqueo del API sin clave (`401`).
-- [x] Añadir dashboard web para monitores, comprobaciones e incidencias; la API key solo vive en memoria de la pestaña.
+- [x] Añadir dashboard web para gestionar monitores y eliminarlos junto con su historial e incidencias; la API key solo vive en memoria de la pestaña.
 - [ ] Añadir restricciones de egreso del proveedor, coordinación distribuida del scheduler y reintentos de webhook.

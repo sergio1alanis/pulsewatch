@@ -107,6 +107,8 @@
     .button.primary:hover { background: #817afa; }
     .button.ghost { background: transparent; }
     .button.danger { color: #ff9aa5; }
+    .button.danger-fill { border-color: rgba(255,120,136,.34); background: rgba(255,120,136,.1); color: #ff9aa5; }
+    .button.danger-fill:hover { border-color: rgba(255,120,136,.5); background: rgba(255,120,136,.18); }
     .button.small { padding: 7px 9px; font-size: 10px; }
     .button:disabled { opacity: .55; cursor: wait; }
 
@@ -370,6 +372,22 @@
       <section class="detail-panel"><h3>Incidencias</h3><div class="detail-list" id="incidentList"></div></section>
     </div>
   </dialog>
+
+  <dialog id="deleteDialog" aria-labelledby="deleteTitle">
+    <div class="dialog-head">
+      <div><p class="eyebrow">ELIMINACIÓN PERMANENTE</p><h2 id="deleteTitle">Eliminar monitor</h2><p>Esta acción no se puede deshacer.</p></div>
+      <button class="close-button" id="closeDeleteButton" type="button" aria-label="Cerrar">×</button>
+    </div>
+    <div class="dialog-body">
+      <div class="detail-item"><div class="detail-item-top"><span>Monitor</span><strong id="deleteMonitorName"></strong></div></div>
+      <p class="field-hint" style="margin-top:14px">También se eliminarán todas sus comprobaciones e incidencias.</p>
+      <p class="form-error" id="deleteError" role="alert"></p>
+      <div class="form-actions">
+        <button class="button ghost" id="cancelDeleteButton" type="button">Cancelar</button>
+        <button class="button danger-fill" id="confirmDeleteButton" type="button">Eliminar definitivamente</button>
+      </div>
+    </div>
+  </dialog>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script>
@@ -378,6 +396,7 @@
       let apiKey = "";
       let authGeneration = 0;
       let detailsRequestId = 0;
+      let monitorToDelete = null;
       let monitors = [];
       let currentFilter = "all";
       let toastTimer;
@@ -385,6 +404,7 @@
       const connectDialog = $("connectDialog");
       const createDialog = $("createDialog");
       const detailsDialog = $("detailsDialog");
+      const deleteDialog = $("deleteDialog");
 
       function toast(message, isError = false) {
         const el = $("toast");
@@ -409,7 +429,11 @@
         detailsRequestId++;
         apiKey = "";
         monitors = [];
+        monitorToDelete = null;
         $("apiKeyInput").value = "";
+        $("deleteMonitorName").textContent = "";
+        $("deleteError").textContent = "";
+        if (deleteDialog.open) deleteDialog.close();
         $("detailsTitle").textContent = "Historial";
         $("detailsEndpoint").textContent = "";
         $("checkList").replaceChildren();
@@ -561,7 +585,8 @@
           actionGroup.append(
             makeButton("Detalles", "button small", () => openDetails(monitor)),
             makeButton("Comprobar", "button small", () => checkNow(monitor)),
-            makeButton(monitor.enabled ? "Pausar" : "Reactivar", "button small ghost", () => toggleEnabled(monitor))
+            makeButton(monitor.enabled ? "Pausar" : "Reactivar", "button small ghost", () => toggleEnabled(monitor)),
+            makeButton("Eliminar", "button small danger", () => openDelete(monitor))
           );
           actions.append(actionGroup);
           row.append(actions);
@@ -607,6 +632,36 @@
           toast(monitor.enabled ? "Monitor pausado." : "Monitor reactivado.");
           await loadMonitors();
         } catch (error) { toast(error.message, true); }
+      }
+
+      function openDelete(monitor) {
+        monitorToDelete = monitor;
+        $("deleteMonitorName").textContent = monitor.name;
+        $("deleteError").textContent = "";
+        deleteDialog.showModal();
+      }
+
+      async function deleteMonitor() {
+        if (!monitorToDelete) return;
+        const monitor = monitorToDelete;
+        const confirmButton = $("confirmDeleteButton");
+        confirmButton.disabled = true;
+        try {
+          await request(`${API_ROOT}/${monitor.id}`, { method: "DELETE" });
+          authGeneration++;
+          detailsRequestId++;
+          monitors = monitors.filter((item) => item.id !== monitor.id);
+          monitorToDelete = null;
+          $("deleteError").textContent = "";
+          if (deleteDialog.open) deleteDialog.close();
+          renderMonitors();
+          toast(`Se eliminó ${monitor.name} junto con su historial e incidencias.`);
+        } catch (error) {
+          if (deleteDialog.open) $("deleteError").textContent = error.message;
+          toast(error.message, true);
+        } finally {
+          confirmButton.disabled = false;
+        }
       }
 
       function appendDetailItem(container, title, meta, status) {
@@ -716,6 +771,10 @@
       $("closeCreateButton").addEventListener("click", () => createDialog.close());
       $("cancelCreateButton").addEventListener("click", () => createDialog.close());
       $("closeDetailsButton").addEventListener("click", () => detailsDialog.close());
+      $("closeDeleteButton").addEventListener("click", () => deleteDialog.close());
+      $("cancelDeleteButton").addEventListener("click", () => deleteDialog.close());
+      $("confirmDeleteButton").addEventListener("click", deleteMonitor);
+      deleteDialog.addEventListener("close", () => { monitorToDelete = null; });
       $("navMonitors").addEventListener("click", () => document.getElementById("monitorSectionTitle").scrollIntoView({ behavior: "smooth" }));
       $("navDocs").addEventListener("click", () => window.open("/swagger-ui.html", "_blank", "noopener,noreferrer"));
 

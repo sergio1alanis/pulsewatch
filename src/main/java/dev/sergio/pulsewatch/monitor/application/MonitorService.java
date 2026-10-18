@@ -1,7 +1,9 @@
 package dev.sergio.pulsewatch.monitor.application;
 
 import dev.sergio.pulsewatch.monitor.domain.MonitorTarget;
+import dev.sergio.pulsewatch.monitor.persistence.MonitorCheckRepository;
 import dev.sergio.pulsewatch.monitor.persistence.MonitorEntity;
+import dev.sergio.pulsewatch.monitor.persistence.MonitorIncidentRepository;
 import dev.sergio.pulsewatch.monitor.persistence.MonitorRepository;
 import java.util.List;
 import java.util.UUID;
@@ -12,9 +14,16 @@ import org.springframework.transaction.annotation.Transactional;
 public class MonitorService {
 
     private final MonitorRepository monitorRepository;
+    private final MonitorCheckRepository monitorCheckRepository;
+    private final MonitorIncidentRepository monitorIncidentRepository;
 
-    public MonitorService(MonitorRepository monitorRepository) {
+    public MonitorService(
+            MonitorRepository monitorRepository,
+            MonitorCheckRepository monitorCheckRepository,
+            MonitorIncidentRepository monitorIncidentRepository) {
         this.monitorRepository = monitorRepository;
+        this.monitorCheckRepository = monitorCheckRepository;
+        this.monitorIncidentRepository = monitorIncidentRepository;
     }
 
     @Transactional
@@ -41,7 +50,7 @@ public class MonitorService {
 
     @Transactional
     public MonitorView setEnabled(UUID id, boolean enabled) {
-        MonitorEntity monitor = monitorRepository.findById(id)
+        MonitorEntity monitor = monitorRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new MonitorNotFoundException(id));
         monitor.setEnabled(enabled);
         return toView(monitor);
@@ -51,10 +60,19 @@ public class MonitorService {
     public MonitorView updateDetails(
             UUID id, String name, String endpoint, int intervalSeconds) {
         MonitorTarget target = MonitorTarget.create(endpoint, intervalSeconds);
-        MonitorEntity monitor = monitorRepository.findById(id)
+        MonitorEntity monitor = monitorRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new MonitorNotFoundException(id));
         monitor.updateDetails(name.trim(), target);
         return toView(monitor);
+    }
+
+    @Transactional
+    public void delete(UUID id) {
+        MonitorEntity monitor = monitorRepository.findByIdForUpdate(id)
+                .orElseThrow(() -> new MonitorNotFoundException(id));
+        monitorIncidentRepository.deleteAllByMonitorId(id);
+        monitorCheckRepository.deleteAllByMonitorId(id);
+        monitorRepository.delete(monitor);
     }
 
     private MonitorView toView(MonitorEntity monitor) {

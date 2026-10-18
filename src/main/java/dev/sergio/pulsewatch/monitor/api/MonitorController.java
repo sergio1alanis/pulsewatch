@@ -12,6 +12,7 @@ import java.net.URI;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -91,6 +92,15 @@ public class MonitorController {
             @Valid @RequestBody UpdateMonitorRequest request) {
         return MonitorResponse.from(monitorService.updateDetails(
                 id, request.name(), request.endpoint(), request.intervalSeconds()));
+    }
+
+    @DeleteMapping("/{id}")
+    @Operation(
+            summary = "Eliminar monitor",
+            description = "Elimina el monitor, su historial de comprobaciones y sus incidencias.")
+    public ResponseEntity<Void> delete(@PathVariable UUID id) {
+        monitorService.delete(id);
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping

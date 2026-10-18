@@ -1,6 +1,7 @@
 package dev.sergio.pulsewatch.monitor.check;
 
 import dev.sergio.pulsewatch.monitor.application.MonitorCheckService;
+import dev.sergio.pulsewatch.monitor.application.MonitorNotFoundException;
 import dev.sergio.pulsewatch.monitor.persistence.MonitorEntity;
 import dev.sergio.pulsewatch.monitor.persistence.MonitorRepository;
 import java.time.Instant;
@@ -43,12 +44,16 @@ public class MonitorScheduler {
             }
 
             try {
-                monitorCheckService.checkNow(monitor.getId());
-            } catch (IllegalArgumentException exception) {
-                monitorCheckService.recordPolicyRejection(monitor.getId(), now);
-                LOGGER.warn(
-                        "Monitor {} was blocked by the target policy; it will retry after its interval",
-                        monitor.getId());
+                try {
+                    monitorCheckService.checkNow(monitor.getId());
+                } catch (IllegalArgumentException exception) {
+                    monitorCheckService.recordPolicyRejection(monitor.getId(), now);
+                    LOGGER.warn(
+                            "Monitor {} was blocked by the target policy; it will retry after its interval",
+                            monitor.getId());
+                }
+            } catch (MonitorNotFoundException exception) {
+                LOGGER.debug("Monitor {} was deleted during the scheduled tick; skipping it", monitor.getId());
             }
         }
     }

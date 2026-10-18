@@ -35,7 +35,7 @@ public class MonitorCheckService {
 
     @Transactional
     public MonitorView checkNow(UUID monitorId) {
-        MonitorEntity monitor = monitorRepository.findById(monitorId)
+        MonitorEntity monitor = monitorRepository.findByIdForUpdate(monitorId)
                 .orElseThrow(() -> new MonitorNotFoundException(monitorId));
         ProbeResult result = monitorProbe.probe(URI.create(monitor.getEndpoint()));
         monitor.recordProbe(result);
@@ -46,7 +46,7 @@ public class MonitorCheckService {
 
     @Transactional
     public void recordPolicyRejection(UUID monitorId, Instant attemptedAt) {
-        MonitorEntity monitor = monitorRepository.findById(monitorId)
+        MonitorEntity monitor = monitorRepository.findByIdForUpdate(monitorId)
                 .orElseThrow(() -> new MonitorNotFoundException(monitorId));
         ProbeResult blockedResult = new ProbeResult(
                 MonitorStatus.BLOCKED, null, 0, attemptedAt);

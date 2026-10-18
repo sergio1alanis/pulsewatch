@@ -2,10 +2,13 @@ package dev.sergio.pulsewatch.monitor.api;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.http.MediaType.TEXT_HTML;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -15,11 +18,22 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.sun.net.httpserver.HttpServer;
+import dev.sergio.pulsewatch.monitor.application.MonitorCheckService;
+import dev.sergio.pulsewatch.monitor.application.MonitorService;
+import dev.sergio.pulsewatch.monitor.check.MonitorScheduler;
+import dev.sergio.pulsewatch.monitor.persistence.MonitorRepository;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -74,6 +88,15 @@ class MonitorRegistrationIntegrationTest {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
+    @Autowired
+    private MonitorCheckService monitorCheckService;
+
+    @Autowired
+    private MonitorRepository monitorRepository;
+
+    @Autowired
+    private MonitorService monitorService;
+
     @BeforeEach
     void cleanDatabase() {
         WEBHOOK_PAYLOADS.clear();
@@ -88,6 +111,7 @@ class MonitorRegistrationIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.info.title").value("PulseWatch API"))
                 .andExpect(jsonPath("$.paths['/api/v1/monitors']").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/monitors/{id}'].delete").exists())
                 .andExpect(jsonPath("$.paths['/api/v1/monitors/{id}/incidents']").exists());
     }
 
@@ -99,6 +123,181 @@ class MonitorRegistrationIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(TEXT_HTML))
                 .andExpect(content().string(containsString("PulseWatch Dashboard")));
+    }
+
+    @Test
+    void concurrentMonitorUpdatesPreserveInflightCheckResult() throws Exception {
+        CountDownLatch probeStarted = new CountDownLatch(1);
+        CountDownLatch resumeProbe = new CountDownLatch(1);
+        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/slow", exchange -> {
+            probeStarted.countDown();
+            try {
+                if (!resumeProbe.await(10, TimeUnit.SECONDS)) {
+                    exchange.sendResponseHeaders(504, -1);
+                    exchange.close();
+                    return;
+                }
+            } catch (InterruptedException exception) {
+                Thread.currentThread().interrupt();
+                exchange.close();
+                return;
+            }
+            exchange.sendResponseHeaders(204, -1);
+            exchange.close();
+        });
+        server.start();
+        ExecutorService executor = Executors.newFixedThreadPool(3);
+
+        try {
+            String endpoint = "http://127.0.0.1:" + server.getAddress().getPort() + "/slow";
+            String id = registerMonitor("Concurrent API", endpoint);
+            UUID monitorId = UUID.fromString(id);
+            Future<?> inFlightCheck = executor.submit(() -> monitorCheckService.checkNow(monitorId));
+            assertTrue(probeStarted.await(5, TimeUnit.SECONDS), "The check did not reach the test server");
+
+            CountDownLatch updatesStarted = new CountDownLatch(2);
+            Future<?> detailsUpdate = executor.submit(() -> {
+                updatesStarted.countDown();
+                monitorService.updateDetails(
+                        monitorId, "Updated API", "https://updated.example/health", 120);
+            });
+            Future<?> pauseUpdate = executor.submit(() -> {
+                updatesStarted.countDown();
+                monitorService.setEnabled(monitorId, false);
+            });
+            assertTrue(updatesStarted.await(5, TimeUnit.SECONDS), "The monitor updates did not start");
+            assertThrows(TimeoutException.class, () -> detailsUpdate.get(500, TimeUnit.MILLISECONDS));
+            assertThrows(TimeoutException.class, () -> pauseUpdate.get(500, TimeUnit.MILLISECONDS));
+
+            resumeProbe.countDown();
+            inFlightCheck.get(10, TimeUnit.SECONDS);
+            detailsUpdate.get(10, TimeUnit.SECONDS);
+            pauseUpdate.get(10, TimeUnit.SECONDS);
+
+            mockMvc.perform(get("/api/v1/monitors/{id}", id))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.name").value("Updated API"))
+                    .andExpect(jsonPath("$.endpoint").value("https://updated.example/health"))
+                    .andExpect(jsonPath("$.intervalSeconds").value(120))
+                    .andExpect(jsonPath("$.enabled").value(false))
+                    .andExpect(jsonPath("$.status").value("UP"))
+                    .andExpect(jsonPath("$.lastHttpStatus").value(204))
+                    .andExpect(jsonPath("$.lastCheckedAt").isNotEmpty());
+        } finally {
+            resumeProbe.countDown();
+            executor.shutdownNow();
+            server.stop(0);
+        }
+    }
+
+    @Test
+    void deletionWaitsForInflightCheckAndSchedulerContinuesWithRemainingMonitors() throws Exception {
+        CountDownLatch probeStarted = new CountDownLatch(1);
+        CountDownLatch resumeProbe = new CountDownLatch(1);
+        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/slow", exchange -> {
+            probeStarted.countDown();
+            try {
+                if (!resumeProbe.await(10, TimeUnit.SECONDS)) {
+                    exchange.sendResponseHeaders(504, -1);
+                    exchange.close();
+                    return;
+                }
+            } catch (InterruptedException exception) {
+                Thread.currentThread().interrupt();
+                exchange.close();
+                return;
+            }
+            exchange.sendResponseHeaders(204, -1);
+            exchange.close();
+        });
+        server.createContext("/healthy", exchange -> {
+            exchange.sendResponseHeaders(204, -1);
+            exchange.close();
+        });
+        server.start();
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+
+        try {
+            int port = server.getAddress().getPort();
+            String deletingId = registerMonitor("A deletion target", "http://127.0.0.1:" + port + "/slow");
+            String remainingId = registerMonitor("B remaining monitor", "http://127.0.0.1:" + port + "/healthy");
+            UUID deletingMonitorId = UUID.fromString(deletingId);
+            UUID remainingMonitorId = UUID.fromString(remainingId);
+            MonitorScheduler scheduler = new MonitorScheduler(monitorRepository, monitorCheckService);
+            Future<?> scheduledChecks = executor.submit(() -> scheduler.runDueChecks(Instant.now()));
+            assertTrue(probeStarted.await(5, TimeUnit.SECONDS), "The scheduled probe did not reach the test server");
+
+            CountDownLatch deleteStarted = new CountDownLatch(1);
+            Future<?> deletion = executor.submit(() -> {
+                deleteStarted.countDown();
+                monitorService.delete(deletingMonitorId);
+            });
+            assertTrue(deleteStarted.await(5, TimeUnit.SECONDS), "The delete task did not start");
+            boolean deletionWaitedForProbe;
+            try {
+                deletion.get(1, TimeUnit.SECONDS);
+                deletionWaitedForProbe = false;
+            } catch (TimeoutException expected) {
+                deletionWaitedForProbe = true;
+            }
+            assertTrue(deletionWaitedForProbe, "Deletion should wait for the monitor's in-flight check");
+
+            resumeProbe.countDown();
+            scheduledChecks.get(10, TimeUnit.SECONDS);
+            deletion.get(10, TimeUnit.SECONDS);
+
+            assertFalse(monitorRepository.existsById(deletingMonitorId));
+            assertEquals(1, jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM monitor_checks WHERE monitor_id = ?", Integer.class, remainingMonitorId));
+        } finally {
+            resumeProbe.countDown();
+            executor.shutdownNow();
+            server.stop(0);
+        }
+    }
+
+    @Test
+    void deletesMonitorAndCascadeDeletesHistoryAndIncidents() throws Exception {
+        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/health", exchange -> {
+            exchange.sendResponseHeaders(503, -1);
+            exchange.close();
+        });
+        server.start();
+
+        try {
+            String endpoint = "http://127.0.0.1:" + server.getAddress().getPort() + "/health";
+            String id = registerMonitor("Temporary API", endpoint);
+            UUID monitorId = UUID.fromString(id);
+
+            mockMvc.perform(post("/api/v1/monitors/{id}/checks", id))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.status").value("DOWN"));
+            assertEquals(1, jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM monitor_checks WHERE monitor_id = ?", Integer.class, monitorId));
+            assertEquals(1, jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM monitor_incidents WHERE monitor_id = ?", Integer.class, monitorId));
+
+            mockMvc.perform(delete("/api/v1/monitors/{id}", id))
+                    .andExpect(status().isNoContent());
+
+            assertEquals(0, jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM monitors WHERE id = ?", Integer.class, monitorId));
+            assertEquals(0, jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM monitor_checks WHERE monitor_id = ?", Integer.class, monitorId));
+            assertEquals(0, jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM monitor_incidents WHERE monitor_id = ?", Integer.class, monitorId));
+            mockMvc.perform(get("/api/v1/monitors/{id}", id)).andExpect(status().isNotFound());
+            mockMvc.perform(get("/api/v1/monitors/{id}/checks", id)).andExpect(status().isNotFound());
+            mockMvc.perform(get("/api/v1/monitors/{id}/incidents", id)).andExpect(status().isNotFound());
+            mockMvc.perform(delete("/api/v1/monitors/{id}", id))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.detail").value("No existe un monitor con ese ID"));
+        } finally {
+            server.stop(0);
+        }
     }
 
     @Test
