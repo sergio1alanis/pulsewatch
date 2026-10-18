@@ -44,6 +44,8 @@ public class ApiSecurityConfiguration {
                 .authorizeHttpRequests(authorize -> authorize
                         .dispatcherTypeMatchers(DispatcherType.ERROR, DispatcherType.FORWARD).permitAll()
                         .requestMatchers(
+                                "/",
+                                "/index.html",
                                 "/actuator/health",
                                 "/actuator/health/**",
                                 "/v3/api-docs",

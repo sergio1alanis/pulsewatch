@@ -1,0 +1,761 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#090a0d">
+  <meta name="description" content="Panel de control de disponibilidad de PulseWatch">
+  <title>PulseWatch Dashboard</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #090a0d;
+      --sidebar: #0d0f13;
+      --surface: #11141a;
+      --surface-raised: #151922;
+      --surface-hover: #1b202a;
+      --text: #eef0f6;
+      --muted: #9299a8;
+      --quiet: #697181;
+      --line: rgba(255, 255, 255, .075);
+      --line-strong: rgba(255, 255, 255, .12);
+      --accent: #8882ff;
+      --accent-strong: #7068ef;
+      --green: #48d6a0;
+      --red: #ff7888;
+      --amber: #f4bf68;
+      --radius: 14px;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-synthesis: none;
+      text-rendering: optimizeLegibility;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-width: 320px;
+      min-height: 100vh;
+      color: var(--text);
+      background:
+        radial-gradient(ellipse at 78% -8%, rgba(112, 104, 239, .12), transparent 32rem),
+        var(--bg);
+    }
+    button, input, select { font: inherit; }
+    button { color: inherit; }
+    button:focus-visible, input:focus-visible, select:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+    .app-shell { min-height: 100vh; display: grid; grid-template-columns: 250px minmax(0, 1fr); }
+    .sidebar {
+      position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column;
+      padding: 24px 14px 16px; background: rgba(13, 15, 19, .94); border-right: 1px solid var(--line);
+    }
+    .brand { display: flex; align-items: center; gap: 11px; padding: 0 10px; text-decoration: none; color: var(--text); }
+    .brand-mark {
+      width: 34px; height: 34px; display: grid; place-items: center; border-radius: 11px;
+      background: linear-gradient(145deg, #8580ff, #5e58d7); box-shadow: 0 6px 24px rgba(112, 104, 239, .25);
+    }
+    .brand-mark svg { width: 20px; height: 20px; }
+    .brand-name { font-size: 15px; font-weight: 650; letter-spacing: -.3px; }
+    .brand-sub { display: block; margin-top: 2px; color: var(--quiet); font-size: 9px; letter-spacing: 1.4px; font-weight: 700; }
+    .workspace {
+      display: flex; align-items: center; gap: 10px; margin: 31px 4px 24px; padding: 11px 10px;
+      border: 1px solid var(--line); border-radius: 10px; background: rgba(255,255,255,.018);
+    }
+    .workspace-icon { width: 29px; height: 29px; display: grid; place-items: center; border-radius: 8px; background: #202330; color: #b1adff; font-size: 12px; font-weight: 700; }
+    .workspace-copy { min-width: 0; flex: 1; }
+    .workspace-title { font-size: 12px; font-weight: 560; }
+    .workspace-meta { margin-top: 3px; color: var(--quiet); font-size: 10px; }
+    .workspace-chevron { color: var(--quiet); font-size: 13px; }
+    .nav-label { padding: 0 11px 9px; color: #626a79; font-size: 10px; font-weight: 700; letter-spacing: 1.15px; }
+    .nav-list { display: grid; gap: 4px; }
+    .nav-item {
+      width: 100%; display: flex; align-items: center; gap: 11px; padding: 10px 11px; border: 0; border-radius: 9px;
+      background: transparent; color: var(--muted); text-align: left; font-size: 12px; cursor: pointer;
+    }
+    .nav-item:hover { background: rgba(255,255,255,.035); color: var(--text); }
+    .nav-item.active { color: #dedcff; background: rgba(126, 119, 255, .12); box-shadow: inset 0 0 0 1px rgba(136, 130, 255, .13); }
+    .nav-icon { width: 17px; text-align: center; font-size: 15px; }
+    .nav-count { margin-left: auto; color: var(--quiet); font-size: 10px; }
+    .sidebar-spacer { flex: 1; }
+    .free-note { margin: 14px 4px 13px; padding: 13px; border: 1px solid var(--line); border-radius: 11px; background: rgba(255,255,255,.018); }
+    .free-note-top { display: flex; align-items: center; gap: 7px; font-size: 11px; font-weight: 580; }
+    .free-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 10px rgba(72,214,160,.6); }
+    .free-note p { margin: 8px 0 0; color: var(--muted); font-size: 10px; line-height: 1.5; }
+    .sidebar-footer { display: flex; align-items: center; gap: 9px; padding: 12px 9px 0; border-top: 1px solid var(--line); }
+    .avatar { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%; background: #292b39; color: #c2beff; font-size: 10px; font-weight: 700; }
+    .footer-copy { min-width: 0; flex: 1; font-size: 11px; }
+    .footer-copy small { display: block; margin-top: 3px; color: var(--quiet); font-size: 9px; }
+
+    .main { min-width: 0; padding: 0 40px 48px; }
+    .topbar { height: 72px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); }
+    .breadcrumbs { color: var(--muted); font-size: 12px; }
+    .breadcrumbs strong { color: var(--text); font-weight: 550; }
+    .top-actions { display: flex; align-items: center; gap: 9px; }
+    .connection-state { display: inline-flex; align-items: center; gap: 7px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); font-size: 10px; }
+    .connection-state .free-dot { width: 6px; height: 6px; background: var(--quiet); box-shadow: none; }
+    .connection-state.connected .free-dot { background: var(--green); box-shadow: 0 0 9px rgba(72,214,160,.5); }
+    .icon-button, .button {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid var(--line-strong);
+      border-radius: 8px; padding: 9px 12px; background: rgba(255,255,255,.035); color: #dfe2ea; font-size: 11px; font-weight: 550; cursor: pointer;
+      transition: background .16s ease, border-color .16s ease, transform .16s ease;
+    }
+    .button:hover, .icon-button:hover { background: var(--surface-hover); border-color: rgba(255,255,255,.17); }
+    .button:active, .icon-button:active { transform: translateY(1px); }
+    .button.primary { background: var(--accent-strong); border-color: transparent; color: #fff; box-shadow: 0 5px 18px rgba(112,104,239,.2); }
+    .button.primary:hover { background: #817afa; }
+    .button.ghost { background: transparent; }
+    .button.danger { color: #ff9aa5; }
+    .button.small { padding: 7px 9px; font-size: 10px; }
+    .button:disabled { opacity: .55; cursor: wait; }
+
+    .intro { display: flex; align-items: end; justify-content: space-between; gap: 20px; padding: 34px 0 24px; }
+    .eyebrow { margin: 0 0 10px; color: #8580ff; font-size: 10px; font-weight: 700; letter-spacing: 1.25px; text-transform: uppercase; }
+    h1 { margin: 0; font-size: clamp(25px, 3vw, 34px); line-height: 1.12; letter-spacing: -1.1px; font-weight: 560; }
+    .intro-copy { margin: 9px 0 0; color: var(--muted); font-size: 12px; }
+    .intro-actions { display: flex; gap: 8px; flex-shrink: 0; }
+    .wakeup-note { display: flex; align-items: flex-start; gap: 10px; margin: 0 0 22px; padding: 12px 14px; border: 1px solid rgba(244,191,104,.16); border-radius: 10px; background: rgba(244,191,104,.045); color: #d5c4a7; font-size: 10px; line-height: 1.5; }
+    .wakeup-note strong { color: #f4d39b; font-weight: 600; }
+    .notice-mark { color: var(--amber); font-size: 14px; line-height: 1; }
+    .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 13px; }
+    .stat-card { position: relative; overflow: hidden; min-height: 116px; padding: 17px 18px; border: 1px solid var(--line); border-radius: 12px; background: linear-gradient(145deg, rgba(255,255,255,.035), rgba(255,255,255,.012)); }
+    .stat-label { color: var(--muted); font-size: 11px; }
+    .stat-value { margin-top: 13px; font-size: 29px; line-height: 1; font-weight: 570; letter-spacing: -1px; }
+    .stat-foot { margin-top: 9px; color: var(--quiet); font-size: 10px; }
+    .stat-indicator { position: absolute; top: 17px; right: 17px; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+    .stat-card.good .stat-indicator { background: var(--green); }
+    .stat-card.alert .stat-indicator { background: var(--red); }
+    .stat-card.paused .stat-indicator { background: var(--amber); }
+
+    .section-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: 34px 0 13px; }
+    .section-title { margin: 0; font-size: 15px; font-weight: 570; letter-spacing: -.2px; }
+    .section-caption { margin: 5px 0 0; color: var(--quiet); font-size: 10px; }
+    .filter-list { display: flex; gap: 5px; padding: 4px; border: 1px solid var(--line); border-radius: 9px; background: rgba(255,255,255,.018); }
+    .filter-button { padding: 6px 10px; border: 0; border-radius: 6px; background: transparent; color: var(--muted); font-size: 10px; cursor: pointer; }
+    .filter-button:hover { color: var(--text); }
+    .filter-button.active { background: #242733; color: var(--text); }
+    .monitor-panel { overflow: hidden; border: 1px solid var(--line); border-radius: 12px; background: rgba(17,20,26,.76); }
+    .table-scroll { overflow-x: auto; }
+    table { width: 100%; min-width: 760px; border-collapse: collapse; text-align: left; }
+    thead { background: rgba(255,255,255,.018); }
+    th { padding: 12px 14px; color: #737b8a; font-size: 9px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; white-space: nowrap; }
+    td { padding: 14px; border-top: 1px solid var(--line); color: #d7dbe4; font-size: 11px; vertical-align: middle; }
+    tbody tr { transition: background .15s ease; }
+    tbody tr:hover { background: rgba(255,255,255,.022); }
+    .monitor-main { display: flex; align-items: center; gap: 11px; min-width: 210px; }
+    .monitor-icon { width: 32px; height: 32px; flex: 0 0 32px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 9px; background: #171a22; color: #a9a5ff; font-size: 13px; }
+    .monitor-name { max-width: 240px; overflow: hidden; color: var(--text); font-weight: 560; text-overflow: ellipsis; white-space: nowrap; }
+    .monitor-host { max-width: 250px; overflow: hidden; margin-top: 4px; color: var(--quiet); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+    .status-pill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 8px; border: 1px solid var(--line); border-radius: 999px; font-size: 9px; font-weight: 600; white-space: nowrap; }
+    .status-pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+    .status-up { border-color: rgba(72,214,160,.19); background: rgba(72,214,160,.07); color: var(--green); }
+    .status-down { border-color: rgba(255,120,136,.2); background: rgba(255,120,136,.07); color: var(--red); }
+    .status-blocked { border-color: rgba(244,191,104,.2); background: rgba(244,191,104,.07); color: var(--amber); }
+    .status-unknown { color: #a9b0bd; background: rgba(255,255,255,.03); }
+    .enabled-label { color: var(--muted); font-size: 10px; }
+    .enabled-label.paused { color: var(--amber); }
+    .latency { color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .row-actions { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+    .empty-state { display: none; padding: 50px 24px; text-align: center; }
+    .empty-state.visible { display: block; }
+    .empty-icon { width: 48px; height: 48px; display: grid; place-items: center; margin: 0 auto 15px; border: 1px solid var(--line); border-radius: 15px; background: #171a22; color: #aaa5ff; font-size: 20px; }
+    .empty-state h3 { margin: 0; font-size: 14px; font-weight: 560; }
+    .empty-state p { max-width: 360px; margin: 8px auto 17px; color: var(--muted); font-size: 11px; line-height: 1.6; }
+    .page-footer { display: flex; justify-content: space-between; gap: 16px; margin-top: 20px; color: var(--quiet); font-size: 9px; }
+    .page-footer a { color: #9690ff; text-decoration: none; }
+    .page-footer a:hover { color: #c2beff; }
+
+    dialog { width: min(520px, calc(100vw - 28px)); max-height: min(84vh, 760px); padding: 0; overflow: auto; border: 1px solid var(--line-strong); border-radius: 16px; background: #11141a; color: var(--text); box-shadow: 0 28px 100px rgba(0,0,0,.65); }
+    dialog::backdrop { background: rgba(3,4,7,.76); backdrop-filter: blur(8px); }
+    .dialog-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 22px 22px 17px; border-bottom: 1px solid var(--line); }
+    .dialog-head h2 { margin: 0; font-size: 18px; font-weight: 580; letter-spacing: -.35px; }
+    .dialog-head p { margin: 7px 0 0; color: var(--muted); font-size: 11px; line-height: 1.55; }
+    .close-button { width: 30px; height: 30px; display: grid; place-items: center; flex: 0 0 30px; border: 1px solid var(--line); border-radius: 8px; background: transparent; color: var(--muted); cursor: pointer; }
+    .dialog-body { padding: 20px 22px 22px; }
+    .form-grid { display: grid; gap: 15px; }
+    .field label { display: block; margin-bottom: 7px; color: #c7cbd5; font-size: 10px; font-weight: 580; }
+    .field input, .field select { width: 100%; padding: 11px 12px; border: 1px solid var(--line-strong); border-radius: 8px; outline: none; background: #0c0e12; color: var(--text); font-size: 11px; }
+    .field input::placeholder { color: #58606e; }
+    .field input:focus, .field select:focus { border-color: rgba(136,130,255,.7); box-shadow: 0 0 0 3px rgba(136,130,255,.11); }
+    .field-hint { display: block; margin-top: 6px; color: var(--quiet); font-size: 9px; line-height: 1.5; }
+    .form-error { min-height: 16px; margin: 0; color: var(--red); font-size: 10px; }
+    .form-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 19px; }
+    .security-note { display: flex; gap: 9px; margin-top: 15px; padding: 10px 11px; border: 1px solid rgba(136,130,255,.14); border-radius: 9px; background: rgba(136,130,255,.045); color: #b7b4e5; font-size: 9px; line-height: 1.5; }
+    .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 18px 22px 22px; }
+    .detail-panel { min-width: 0; padding: 13px; border: 1px solid var(--line); border-radius: 10px; background: rgba(255,255,255,.015); }
+    .detail-panel h3 { margin: 0 0 12px; font-size: 11px; font-weight: 580; }
+    .detail-list { display: grid; gap: 8px; max-height: 250px; overflow: auto; }
+    .detail-item { padding: 9px; border: 1px solid var(--line); border-radius: 8px; background: rgba(255,255,255,.018); }
+    .detail-item-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .detail-item small { display: block; margin-top: 5px; color: var(--quiet); font-size: 9px; }
+    .detail-empty { color: var(--quiet); font-size: 10px; line-height: 1.5; }
+    .toast { position: fixed; right: 22px; bottom: 22px; z-index: 20; max-width: min(420px, calc(100vw - 44px)); padding: 12px 15px; border: 1px solid var(--line-strong); border-radius: 10px; background: #181b22; color: var(--text); box-shadow: 0 12px 32px rgba(0,0,0,.35); font-size: 11px; opacity: 0; transform: translateY(8px); pointer-events: none; transition: opacity .2s ease, transform .2s ease; }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .toast.error { border-color: rgba(255,120,136,.3); color: #ffb2bc; }
+    .skeleton { height: 54px; border-top: 1px solid var(--line); background: linear-gradient(90deg, transparent, rgba(255,255,255,.025), transparent); background-size: 220% 100%; animation: shimmer 1.4s infinite; }
+    @keyframes shimmer { to { background-position: -220% 0; } }
+
+    @media (max-width: 1100px) {
+      .main { padding-right: 25px; padding-left: 25px; }
+      .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 760px) {
+      .app-shell { display: block; }
+      .sidebar { position: static; width: 100%; height: auto; padding: 12px 16px; border-right: 0; border-bottom: 1px solid var(--line); }
+      .brand { padding: 0 2px; }
+      .workspace, .nav-label, .nav-list, .free-note, .sidebar-footer { display: none; }
+      .main { padding: 0 16px 32px; }
+      .topbar { height: 58px; }
+      .connection-state { font-size: 0; padding: 8px; }
+      .connection-state .free-dot { width: 8px; height: 8px; }
+      .intro { align-items: flex-start; flex-direction: column; padding: 27px 0 19px; }
+      .intro-actions { width: 100%; }
+      .intro-actions .button { flex: 1; }
+      .section-head { align-items: flex-start; flex-direction: column; }
+      .filter-list { max-width: 100%; overflow-x: auto; }
+      .stats { gap: 9px; }
+      .stat-card { min-height: 102px; padding: 14px; }
+      .stat-value { font-size: 25px; }
+      .page-footer { flex-direction: column; }
+    }
+    @media (max-width: 420px) {
+      .stats { grid-template-columns: 1fr 1fr; }
+      .top-actions { gap: 6px; }
+      .top-actions .button { padding: 8px 9px; }
+      .detail-grid { grid-template-columns: 1fr; }
+      .wakeup-note { font-size: 9px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Navegación principal">
+      <a class="brand" href="/" aria-label="PulseWatch inicio">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M3 13h4l2.2-6 4.1 11 2.1-5H21" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="3" cy="13" r="1" fill="white"/><circle cx="21" cy="13" r="1" fill="white"/></svg>
+        </span>
+        <span><span class="brand-name">PulseWatch</span><span class="brand-sub">STATUS CONSOLE</span></span>
+      </a>
+
+      <div class="workspace" aria-label="Workspace actual">
+        <span class="workspace-icon">PW</span>
+        <span class="workspace-copy"><span class="workspace-title">Personal workspace</span><span class="workspace-meta">Monitoreo HTTP</span></span>
+        <span class="workspace-chevron" aria-hidden="true">⌄</span>
+      </div>
+
+      <p class="nav-label">WORKSPACE</p>
+      <nav class="nav-list">
+        <button class="nav-item active" type="button" aria-current="page"><span class="nav-icon" aria-hidden="true">▦</span>Resumen</button>
+        <button class="nav-item" id="navMonitors" type="button"><span class="nav-icon" aria-hidden="true">◎</span>Monitores<span class="nav-count" id="navMonitorCount">—</span></button>
+        <button class="nav-item" id="navDocs" type="button"><span class="nav-icon" aria-hidden="true">⌘</span>API docs</button>
+      </nav>
+
+      <div class="sidebar-spacer"></div>
+      <div class="free-note">
+        <div class="free-note-top"><span class="free-dot" aria-hidden="true"></span>Instancia gratuita</div>
+        <p>Render puede suspender el servicio en inactividad. El scheduler se pausa mientras la instancia duerme.</p>
+      </div>
+      <div class="sidebar-footer">
+        <span class="avatar" aria-hidden="true">PW</span>
+        <span class="footer-copy">PulseWatch<small>API protegida por clave</small></span>
+        <span class="free-dot" id="footerConnectionDot" aria-hidden="true"></span>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="breadcrumbs">Workspace <span aria-hidden="true">/</span> <strong>Resumen</strong></div>
+        <div class="top-actions">
+          <span class="connection-state" id="connectionState"><span class="free-dot" aria-hidden="true"></span><span id="connectionLabel">Desconectado</span></span>
+          <button class="icon-button" id="refreshButton" type="button" aria-label="Actualizar monitores" title="Actualizar">↻</button>
+          <button class="button" id="openKeyButton" type="button">Conectar API</button>
+        </div>
+      </header>
+
+      <section class="intro">
+        <div>
+          <p class="eyebrow">MONITORING / OVERVIEW</p>
+          <h1>Estado de tus servicios</h1>
+          <p class="intro-copy">Una vista clara de disponibilidad, latencia y actividad reciente.</p>
+        </div>
+        <div class="intro-actions">
+          <button class="button" id="refreshTextButton" type="button"><span aria-hidden="true">↻</span> Actualizar</button>
+          <button class="button primary" id="createButton" type="button"><span aria-hidden="true">＋</span> Añadir monitor</button>
+        </div>
+      </section>
+
+      <div class="wakeup-note" role="note">
+        <span class="notice-mark" aria-hidden="true">◷</span>
+        <span><strong>Modo demo gratuito.</strong> La primera petición tras inactividad puede tardar cerca de un minuto. Las comprobaciones automáticas no corren mientras Render suspende la instancia.</span>
+      </div>
+
+      <section class="stats" aria-label="Resumen de monitores">
+        <article class="stat-card"><span class="stat-indicator"></span><div class="stat-label">Monitores totales</div><div class="stat-value" id="totalCount">—</div><div class="stat-foot">Registrados en PulseWatch</div></article>
+        <article class="stat-card good"><span class="stat-indicator"></span><div class="stat-label">Operativos</div><div class="stat-value" id="upCount">—</div><div class="stat-foot">Último estado conocido: UP</div></article>
+        <article class="stat-card alert"><span class="stat-indicator"></span><div class="stat-label">Requieren atención</div><div class="stat-value" id="attentionCount">—</div><div class="stat-foot">DOWN o bloqueados por política</div></article>
+        <article class="stat-card paused"><span class="stat-indicator"></span><div class="stat-label">Pausados</div><div class="stat-value" id="pausedCount">—</div><div class="stat-foot">Sin checks programados</div></article>
+      </section>
+
+      <section aria-labelledby="monitorSectionTitle">
+        <div class="section-head">
+          <div><h2 class="section-title" id="monitorSectionTitle">Monitores</h2><p class="section-caption" id="lastUpdated">Conecta la API para cargar tus datos.</p></div>
+          <div class="filter-list" role="group" aria-label="Filtrar monitores">
+            <button class="filter-button active" data-filter="all" type="button" aria-pressed="true">Todos</button>
+            <button class="filter-button" data-filter="attention" type="button" aria-pressed="false">Atención</button>
+            <button class="filter-button" data-filter="paused" type="button" aria-pressed="false">Pausados</button>
+          </div>
+        </div>
+
+        <div class="monitor-panel">
+          <div class="table-scroll" id="tableWrap">
+            <table>
+              <thead><tr><th>Monitor</th><th>Estado</th><th>Última comprobación</th><th>Latencia</th><th>Intervalo</th><th>Acciones</th></tr></thead>
+              <tbody id="monitorRows"></tbody>
+            </table>
+          </div>
+          <div class="empty-state" id="emptyState">
+            <div class="empty-icon" aria-hidden="true">◎</div>
+            <h3 id="emptyTitle">Aún no hay monitores</h3>
+            <p id="emptyText">Registra un endpoint HTTP para empezar a guardar disponibilidad e historial.</p>
+            <button class="button primary" id="emptyCreateButton" type="button">Añadir primer monitor</button>
+          </div>
+          <div class="skeleton" id="loadingRow" aria-label="Cargando monitores"></div>
+        </div>
+      </section>
+
+      <footer class="page-footer"><span>PulseWatch · API v1</span><span>Clave privada solo en esta pestaña · <a href="/swagger-ui.html" target="_blank" rel="noreferrer">Abrir Swagger</a></span></footer>
+    </main>
+  </div>
+
+  <dialog id="connectDialog" aria-labelledby="connectTitle">
+    <form id="connectForm" class="dialog-body">
+      <div class="dialog-head" style="margin:-20px -22px 20px">
+        <div><p class="eyebrow">CONEXIÓN SEGURA</p><h2 id="connectTitle">Conecta PulseWatch</h2><p>Introduce la API key generada en Render para consultar y administrar tus monitores.</p></div>
+        <span class="brand-mark" aria-hidden="true" style="width:31px;height:31px;flex:0 0 31px">PW</span>
+      </div>
+      <div class="field"><label for="apiKeyInput">API key · X-API-Key</label><input id="apiKeyInput" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" required placeholder="Pega la clave de Render aquí"><span class="field-hint">La clave solo se mantiene en memoria mientras esta pestaña siga abierta; no se guarda en el navegador.</span></div>
+      <p class="form-error" id="connectError" role="alert"></p>
+      <div class="security-note"><span aria-hidden="true">▣</span><span>La clave se envía únicamente a este servicio por HTTPS. Nunca la incluyas en un enlace, captura o mensaje.</span></div>
+      <div class="form-actions"><button class="button primary" id="connectSubmit" type="submit">Conectar</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="createDialog" aria-labelledby="createTitle">
+    <form id="createForm" class="dialog-body">
+      <div class="dialog-head" style="margin:-20px -22px 20px">
+        <div><p class="eyebrow">NUEVO ENDPOINT</p><h2 id="createTitle">Añadir monitor</h2><p>El intervalo mínimo permitido es de 30 segundos.</p></div>
+        <button class="close-button" id="closeCreateButton" type="button" aria-label="Cerrar">×</button>
+      </div>
+      <div class="form-grid">
+        <div class="field"><label for="monitorName">Nombre</label><input id="monitorName" name="name" maxlength="120" required placeholder="Payments API"></div>
+        <div class="field"><label for="monitorEndpoint">Endpoint HTTP o HTTPS</label><input id="monitorEndpoint" name="endpoint" type="url" maxlength="2048" required placeholder="https://httpbin.org/status/200"><span class="field-hint">No agregues credenciales a la URL. Se bloquean destinos de red privada y redirecciones.</span></div>
+        <div class="field"><label for="monitorInterval">Intervalo (segundos)</label><input id="monitorInterval" name="intervalSeconds" type="number" min="30" max="3600" step="1" value="60" required></div>
+      </div>
+      <p class="form-error" id="createError" role="alert"></p>
+      <div class="form-actions"><button class="button ghost" id="cancelCreateButton" type="button">Cancelar</button><button class="button primary" id="saveMonitorButton" type="submit">Crear monitor</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="detailsDialog" aria-labelledby="detailsTitle">
+    <div class="dialog-head">
+      <div><p class="eyebrow">DETALLE DEL MONITOR</p><h2 id="detailsTitle">Historial</h2><p id="detailsEndpoint"></p></div>
+      <button class="close-button" id="closeDetailsButton" type="button" aria-label="Cerrar">×</button>
+    </div>
+    <div class="detail-grid">
+      <section class="detail-panel"><h3>Comprobaciones recientes</h3><div class="detail-list" id="checkList"></div></section>
+      <section class="detail-panel"><h3>Incidencias</h3><div class="detail-list" id="incidentList"></div></section>
+    </div>
+  </dialog>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    (() => {
+      const API_ROOT = "/api/v1/monitors";
+      let apiKey = "";
+      let authGeneration = 0;
+      let detailsRequestId = 0;
+      let monitors = [];
+      let currentFilter = "all";
+      let toastTimer;
+      const $ = (id) => document.getElementById(id);
+      const connectDialog = $("connectDialog");
+      const createDialog = $("createDialog");
+      const detailsDialog = $("detailsDialog");
+
+      function toast(message, isError = false) {
+        const el = $("toast");
+        el.textContent = message;
+        el.classList.toggle("error", isError);
+        el.classList.add("show");
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => el.classList.remove("show"), 3600);
+      }
+
+      function openConnect(message = "") {
+        const secure = window.isSecureContext;
+        $("apiKeyInput").disabled = !secure;
+        $("connectSubmit").disabled = !secure;
+        $("connectError").textContent = message || (secure ? "" : "Esta página no es segura. Abre el dashboard usando HTTPS para ingresar tu API key.");
+        if (!connectDialog.open) connectDialog.showModal();
+        if (secure) setTimeout(() => $("apiKeyInput").focus(), 0);
+      }
+
+      function resetConnectionState() {
+        authGeneration++;
+        detailsRequestId++;
+        apiKey = "";
+        monitors = [];
+        $("apiKeyInput").value = "";
+        $("detailsTitle").textContent = "Historial";
+        $("detailsEndpoint").textContent = "";
+        $("checkList").replaceChildren();
+        $("incidentList").replaceChildren();
+        if (detailsDialog.open) detailsDialog.close();
+        $("connectionState").classList.remove("connected");
+        $("connectionLabel").textContent = "Desconectado";
+        $("footerConnectionDot").style.background = "var(--quiet)";
+        renderMonitors();
+        $("lastUpdated").textContent = "Conecta la API para cargar tus datos.";
+      }
+
+      async function request(path, options = {}) {
+        if (!window.isSecureContext) throw new Error("La conexión no es segura. Abre el dashboard usando HTTPS antes de enviar la API key.");
+        if (!apiKey) throw new Error("Conecta tu API key para continuar.");
+        const requestGeneration = authGeneration;
+        const headers = new Headers(options.headers || {});
+        headers.set("X-API-Key", apiKey);
+        headers.set("Accept", "application/json");
+        if (options.body !== undefined) headers.set("Content-Type", "application/json");
+        const response = await fetch(path, { ...options, headers, cache: "no-store", redirect: "error" });
+        if (requestGeneration !== authGeneration) throw new Error("La sesión cambió durante la solicitud; vuelve a conectarte.");
+        const type = response.headers.get("content-type") || "";
+        const payload = type.includes("json") ? await response.json().catch(() => null) : null;
+        if (requestGeneration !== authGeneration) throw new Error("La sesión cambió durante la solicitud; vuelve a conectarte.");
+        if (response.status === 401) {
+          resetConnectionState();
+          openConnect("La clave no fue aceptada. Copia de nuevo PULSEWATCH_API_KEY desde Render.");
+          throw new Error("API key inválida o vencida.");
+        }
+        if (response.status === 429) {
+          throw new Error(`Límite de solicitudes alcanzado. Intenta de nuevo en ${response.headers.get("Retry-After") || "un momento"} segundos.`);
+        }
+        if (!response.ok) throw new Error(payload?.detail || `La solicitud falló (HTTP ${response.status}).`);
+        return payload;
+      }
+
+      function readableDate(value) {
+        if (!value) return "Sin comprobaciones";
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return "Fecha no disponible";
+        return new Intl.DateTimeFormat("es-MX", { dateStyle: "medium", timeStyle: "short" }).format(date);
+      }
+
+      function hostFrom(endpoint) {
+        try { return new URL(endpoint).host; } catch { return endpoint || "Endpoint no disponible"; }
+      }
+
+      function statusClass(status) {
+        const normalized = String(status || "UNKNOWN").toUpperCase();
+        if (normalized === "UP") return "status-up";
+        if (normalized === "DOWN") return "status-down";
+        if (normalized === "BLOCKED") return "status-blocked";
+        return "status-unknown";
+      }
+
+      function addTextCell(row, text, className = "") {
+        const cell = document.createElement("td");
+        if (className) cell.className = className;
+        cell.textContent = text;
+        row.append(cell);
+        return cell;
+      }
+
+      function makeButton(label, className, action, title = "") {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = className;
+        button.textContent = label;
+        if (title) button.title = title;
+        button.addEventListener("click", action);
+        return button;
+      }
+
+      function updateStats() {
+        const up = monitors.filter((m) => String(m.status).toUpperCase() === "UP").length;
+        const attention = monitors.filter((m) => ["DOWN", "BLOCKED"].includes(String(m.status).toUpperCase())).length;
+        const paused = monitors.filter((m) => !m.enabled).length;
+        $("totalCount").textContent = monitors.length;
+        $("upCount").textContent = up;
+        $("attentionCount").textContent = attention;
+        $("pausedCount").textContent = paused;
+        $("navMonitorCount").textContent = monitors.length;
+      }
+
+      function visibleMonitors() {
+        if (currentFilter === "attention") return monitors.filter((m) => ["DOWN", "BLOCKED"].includes(String(m.status).toUpperCase()));
+        if (currentFilter === "paused") return monitors.filter((m) => !m.enabled);
+        return monitors;
+      }
+
+      function renderMonitors() {
+        updateStats();
+        const rows = $("monitorRows");
+        rows.replaceChildren();
+        const visible = visibleMonitors();
+        $("tableWrap").hidden = visible.length === 0;
+        $("emptyState").classList.toggle("visible", visible.length === 0);
+        $("loadingRow").hidden = true;
+        $("emptyTitle").textContent = monitors.length === 0 ? "Aún no hay monitores" : "Sin resultados";
+        $("emptyText").textContent = monitors.length === 0
+          ? "Registra un endpoint HTTP para empezar a guardar disponibilidad e historial."
+          : "No hay monitores que coincidan con este filtro.";
+        $("emptyCreateButton").hidden = monitors.length > 0;
+
+        for (const monitor of visible) {
+          const row = document.createElement("tr");
+          const monitorCell = document.createElement("td");
+          const identity = document.createElement("div");
+          identity.className = "monitor-main";
+          const icon = document.createElement("span");
+          icon.className = "monitor-icon";
+          icon.setAttribute("aria-hidden", "true");
+          icon.textContent = "◎";
+          const copy = document.createElement("div");
+          copy.style.minWidth = "0";
+          const name = document.createElement("div");
+          name.className = "monitor-name";
+          name.textContent = monitor.name;
+          const host = document.createElement("div");
+          host.className = "monitor-host";
+          host.textContent = hostFrom(monitor.endpoint);
+          copy.append(name, host);
+          identity.append(icon, copy);
+          monitorCell.append(identity);
+          row.append(monitorCell);
+
+          const stateCell = document.createElement("td");
+          const state = document.createElement("span");
+          state.className = `status-pill ${statusClass(monitor.status)}`;
+          state.textContent = monitor.status || "UNKNOWN";
+          stateCell.append(state);
+          if (!monitor.enabled) {
+            const paused = document.createElement("div");
+            paused.className = "enabled-label paused";
+            paused.style.marginTop = "5px";
+            paused.textContent = "Pausado";
+            stateCell.append(paused);
+          }
+          row.append(stateCell);
+
+          addTextCell(row, readableDate(monitor.lastCheckedAt));
+          addTextCell(row, monitor.lastResponseTimeMs == null ? "—" : `${monitor.lastResponseTimeMs} ms`, "latency");
+          addTextCell(row, `${monitor.intervalSeconds} s`);
+
+          const actions = document.createElement("td");
+          const actionGroup = document.createElement("div");
+          actionGroup.className = "row-actions";
+          actionGroup.append(
+            makeButton("Detalles", "button small", () => openDetails(monitor)),
+            makeButton("Comprobar", "button small", () => checkNow(monitor)),
+            makeButton(monitor.enabled ? "Pausar" : "Reactivar", "button small ghost", () => toggleEnabled(monitor))
+          );
+          actions.append(actionGroup);
+          row.append(actions);
+          rows.append(row);
+        }
+        $("lastUpdated").textContent = `Actualizado ${new Intl.DateTimeFormat("es-MX", { timeStyle: "short" }).format(new Date())}`;
+      }
+
+      async function loadMonitors(showMessage = false) {
+        const loadGeneration = authGeneration;
+        $("loadingRow").hidden = false;
+        try {
+          const loadedMonitors = await request(API_ROOT) || [];
+          if (loadGeneration !== authGeneration) return;
+          monitors = loadedMonitors;
+          renderMonitors();
+          $("connectionState").classList.add("connected");
+          $("connectionLabel").textContent = "API conectada";
+          $("footerConnectionDot").style.background = "var(--green)";
+          if (showMessage) toast("Conexión segura establecida.");
+        } catch (error) {
+          $("loadingRow").hidden = true;
+          if (loadGeneration !== authGeneration) return;
+          if (apiKey) toast(error.message, true);
+          throw error;
+        }
+      }
+
+      async function checkNow(monitor) {
+        try {
+          await request(`${API_ROOT}/${monitor.id}/checks`, { method: "POST" });
+          toast(`Comprobación ejecutada para ${monitor.name}.`);
+          await loadMonitors();
+        } catch (error) { toast(error.message, true); }
+      }
+
+      async function toggleEnabled(monitor) {
+        try {
+          await request(`${API_ROOT}/${monitor.id}`, {
+            method: "PATCH",
+            body: JSON.stringify({ enabled: !monitor.enabled })
+          });
+          toast(monitor.enabled ? "Monitor pausado." : "Monitor reactivado.");
+          await loadMonitors();
+        } catch (error) { toast(error.message, true); }
+      }
+
+      function appendDetailItem(container, title, meta, status) {
+        const item = document.createElement("article");
+        item.className = "detail-item";
+        const top = document.createElement("div");
+        top.className = "detail-item-top";
+        const label = document.createElement("span");
+        label.textContent = title;
+        const badge = document.createElement("span");
+        badge.className = `status-pill ${statusClass(status)}`;
+        badge.textContent = status;
+        top.append(label, badge);
+        const info = document.createElement("small");
+        info.textContent = meta;
+        item.append(top, info);
+        container.append(item);
+      }
+
+      function emptyDetail(container, message) {
+        const note = document.createElement("p");
+        note.className = "detail-empty";
+        note.textContent = message;
+        container.append(note);
+      }
+
+      async function openDetails(monitor) {
+        const requestId = ++detailsRequestId;
+        const requestGeneration = authGeneration;
+        $("detailsTitle").textContent = monitor.name;
+        $("detailsEndpoint").textContent = monitor.endpoint;
+        $("checkList").replaceChildren();
+        $("incidentList").replaceChildren();
+        detailsDialog.showModal();
+        const [checksResult, incidentsResult] = await Promise.allSettled([
+          request(`${API_ROOT}/${monitor.id}/checks`),
+          request(`${API_ROOT}/${monitor.id}/incidents`)
+        ]);
+        if (requestId !== detailsRequestId || requestGeneration !== authGeneration || !detailsDialog.open) return;
+        const checkList = $("checkList");
+        const incidentList = $("incidentList");
+        if (checksResult.status === "rejected") {
+          emptyDetail(checkList, `No se pudieron cargar las comprobaciones: ${checksResult.reason?.message || "error desconocido"}`);
+        } else {
+          const checks = checksResult.value || [];
+          if (!checks.length) emptyDetail(checkList, "Aún no hay comprobaciones.");
+          for (const check of checks.slice(0, 20)) {
+            const http = check.httpStatus == null ? "sin HTTP status" : `HTTP ${check.httpStatus}`;
+            appendDetailItem(checkList, http, `${readableDate(check.checkedAt)} · ${check.responseTimeMs} ms`, check.status);
+          }
+        }
+        if (incidentsResult.status === "rejected") {
+          emptyDetail(incidentList, `No se pudieron cargar las incidencias: ${incidentsResult.reason?.message || "error desconocido"}`);
+        } else {
+          const incidents = incidentsResult.value || [];
+          if (!incidents.length) emptyDetail(incidentList, "No hay incidencias registradas.");
+          for (const incident of incidents.slice(0, 20)) {
+            appendDetailItem(incidentList, incident.status, `Inicio ${readableDate(incident.startedAt)} · Última observación ${readableDate(incident.lastObservedAt)}`, incident.status === "OPEN" ? "DOWN" : "UP");
+          }
+        }
+      }
+
+      $("connectForm").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        if (!window.isSecureContext) {
+          $("apiKeyInput").value = "";
+          $("connectError").textContent = "La conexión no es segura. Abre el dashboard usando HTTPS antes de ingresar tu API key.";
+          return;
+        }
+        const candidate = $("apiKeyInput").value.trim();
+        if (!candidate) {
+          $("connectError").textContent = "Introduce la API key de Render.";
+          return;
+        }
+        resetConnectionState();
+        const connectionAttempt = ++authGeneration;
+        apiKey = candidate;
+        $("connectSubmit").disabled = true;
+        $("connectError").textContent = "Comprobando acceso...";
+        try {
+          const loadedMonitors = await request(API_ROOT) || [];
+          if (connectionAttempt !== authGeneration) return;
+          monitors = loadedMonitors;
+          $("apiKeyInput").value = "";
+          $("connectError").textContent = "";
+          connectDialog.close();
+          renderMonitors();
+          $("connectionState").classList.add("connected");
+          $("connectionLabel").textContent = "API conectada";
+          $("footerConnectionDot").style.background = "var(--green)";
+          toast("Conexión establecida. La clave vive solo en esta pestaña.");
+        } catch (error) {
+          if (connectionAttempt !== authGeneration) return;
+          apiKey = "";
+          $("apiKeyInput").value = "";
+          $("connectError").textContent = error.message;
+        } finally {
+          if (connectionAttempt === authGeneration) $("connectSubmit").disabled = false;
+        }
+      });
+
+      $("openKeyButton").addEventListener("click", () => openConnect());
+      $("refreshButton").addEventListener("click", () => loadMonitors().catch(() => {}));
+      $("refreshTextButton").addEventListener("click", () => loadMonitors().catch((error) => toast(error.message, true)));
+      $("createButton").addEventListener("click", () => { $("createError").textContent = ""; createDialog.showModal(); });
+      $("emptyCreateButton").addEventListener("click", () => { $("createError").textContent = ""; createDialog.showModal(); });
+      $("closeCreateButton").addEventListener("click", () => createDialog.close());
+      $("cancelCreateButton").addEventListener("click", () => createDialog.close());
+      $("closeDetailsButton").addEventListener("click", () => detailsDialog.close());
+      $("navMonitors").addEventListener("click", () => document.getElementById("monitorSectionTitle").scrollIntoView({ behavior: "smooth" }));
+      $("navDocs").addEventListener("click", () => window.open("/swagger-ui.html", "_blank", "noopener,noreferrer"));
+
+      document.querySelectorAll("[data-filter]").forEach((button) => {
+        button.addEventListener("click", () => {
+          currentFilter = button.dataset.filter;
+          document.querySelectorAll("[data-filter]").forEach((item) => {
+            const active = item === button;
+            item.classList.toggle("active", active);
+            item.setAttribute("aria-pressed", String(active));
+          });
+          renderMonitors();
+        });
+      });
+
+      $("createForm").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        $("createError").textContent = "";
+        const body = {
+          name: $("monitorName").value.trim(),
+          endpoint: $("monitorEndpoint").value.trim(),
+          intervalSeconds: Number($("monitorInterval").value)
+        };
+        $("saveMonitorButton").disabled = true;
+        try {
+          await request(API_ROOT, { method: "POST", body: JSON.stringify(body) });
+          createDialog.close();
+          $("createForm").reset();
+          $("monitorInterval").value = "60";
+          toast("Monitor creado.");
+          await loadMonitors();
+        } catch (error) {
+          $("createError").textContent = error.message;
+        } finally {
+          $("saveMonitorButton").disabled = false;
+        }
+      });
+
+      window.addEventListener("DOMContentLoaded", () => openConnect());
+    })();
+  </script>
+</body>
+</html>

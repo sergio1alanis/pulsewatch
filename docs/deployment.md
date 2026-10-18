@@ -2,7 +2,7 @@
 
 ## Estado
 
-El repositorio incluye un `Dockerfile` multi-stage y `render.yaml`. PulseWatch está desplegado en Render Free conectado a Neon Free en Oregon. Se verificó `/actuator/health` con HTTP 200 y estado `UP`; el API responde 401 sin `X-API-Key`. Render Free suspende el servicio tras inactividad, por lo que el scheduler no es continuo. No hay credenciales en el repositorio.
+El repositorio incluye un `Dockerfile` multi-stage y `render.yaml`. PulseWatch está desplegado en Render Free conectado a Neon Free en Oregon. Se verificó `/actuator/health` con HTTP 200 y estado `UP`; el API responde 401 sin `X-API-Key`. El dashboard está servido en `/`, requiere HTTPS, solicita la API key al usuario y la mantiene solo en memoria durante esa pestaña. Render Free suspende el servicio tras inactividad, por lo que el scheduler no es continuo. No hay credenciales en el repositorio.
 
 ## Variables de entorno necesarias
 

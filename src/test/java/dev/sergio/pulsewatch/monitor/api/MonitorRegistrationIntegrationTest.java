@@ -1,8 +1,11 @@
 package dev.sergio.pulsewatch.monitor.api;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
+import static org.springframework.http.MediaType.TEXT_HTML;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -86,6 +89,16 @@ class MonitorRegistrationIntegrationTest {
                 .andExpect(jsonPath("$.info.title").value("PulseWatch API"))
                 .andExpect(jsonPath("$.paths['/api/v1/monitors']").exists())
                 .andExpect(jsonPath("$.paths['/api/v1/monitors/{id}/incidents']").exists());
+    }
+
+    @Test
+    void servesDashboardWithoutApiKey() throws Exception {
+        mockMvc.perform(get("/"))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/index.html"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(TEXT_HTML))
+                .andExpect(content().string(containsString("PulseWatch Dashboard")));
     }
 
     @Test
